@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Console Admin Bidan v2.9 - Puskesmas Sampanahan</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #0d9488;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .setting-panel-content { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.5s cubic-bezier(0, 1, 0, 1); 
+        }
+        .setting-panel-content.open { 
+            max-height: 5000px; 
+            transition: max-height 1.2s ease-in-out; 
+        }
+        .chevron-icon { transition: transform 0.3s; }
+        .chevron-icon.rotate { transform: rotate(180deg); }
+        
+        .rekap-wrapper { 
+            width: 100%; 
+            overflow-x: auto; 
+            border-radius: 24px; 
+            background: white; 
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        }
+        .editor-table { border-collapse: collapse; min-width: 1000px; font-size: 11px; }
+        .editor-table th, .editor-table td { border: 1px solid #f1f5f9; text-align: center; padding: 10px 4px; }
+        .editor-table th { background: #f8fafc; font-weight: 800; color: #64748b; text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }
+        
+        .sticky-col { 
+            position: sticky; 
+            left: 0; 
+            background: white !important; 
+            z-index: 10; 
+            min-width: 140px; 
+            text-align: left !important; 
+            padding-left: 16px !important; 
+            border-right: 2px solid #f1f5f9 !important; 
+            font-weight: 700; 
+            color: #0f172a;
+            font-size: 10px;
+        }
+
+        .pill-item { 
+            background: white; 
+            border-radius: 20px; 
+            padding: 12px 16px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 8px; 
+            font-weight: 700; 
+            color: #334155; 
+            font-size: 12px; 
+            border: 1px solid #e2e8f0;
+            transition: 0.2s;
+        }
+        .pill-item:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(13, 148, 136, 0.1); }
+
+        .cell-P { background-color: #ccfbf1 !important; color: #0d9488 !important; }
+        .cell-S { background-color: #fef3c7 !important; color: #d97706 !important; }
+        .cell-M { background-color: #dbeafe !important; color: #2563eb !important; }
+        .cell-generic { background-color: #f1f5f9 !important; color: #64748b !important; }
+
+        .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e2e8f0; transition: .3s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px); z-index: 2000;
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-card {
+            background: white; width: 100%; max-width: 360px;
+            border-radius: 32px; overflow: hidden; animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes modalPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { 
+            pointer-events: auto; background: white; border-radius: 20px; padding: 18px 24px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-left: 6px solid #10b981; 
+            display: flex; align-items: center; gap: 14px; min-width: 280px; transform: translateX(120%); transition: 0.5s;
+        }
+        .toast.show { transform: translateX(0); }
+
+        @media print {
+            body * { visibility: hidden; height: 0; margin: 0; padding: 0; }
+            #printable-qr-area, #printable-qr-area * { visibility: visible; height: auto; }
+            #printable-qr-area { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- LOADING SCREEN -->
+<div id="loading" class="hidden fixed inset-0 bg-white/95 backdrop-blur-md z-[3000] flex flex-col items-center justify-center px-6">
+    <div class="relative w-20 h-20">
+        <div class="absolute inset-0 border-8 border-teal-50 rounded-full"></div>
+        <div class="absolute inset-0 border-8 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+    <p id="loading-text" class="mt-8 font-black text-slate-800 uppercase tracking-[0.3em] text-[11px]">Sinkronisasi Cloud...</p>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div id="modal-success" class="modal-overlay" onclick="if(event.target === this) closeSuccessModal()">
+    <div class="modal-card">
+        <div class="p-10 text-center">
+            <div class="w-24 h-24 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-teal-200">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-2">Sinkronisasi Berhasil</h3>
+            <p class="text-[11px] font-bold text-slate-400 uppercase leading-relaxed mb-8 tracking-widest px-4">Seluruh data konfigurasi, jadwal, dan personil Bidan telah diperbarui secara global.</p>
+            <button onclick="closeSuccessModal()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">Selesai</button>
+        </div>
+    </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="settings-auth-container" class="fixed inset-0 z-[1500] flex flex-col items-center justify-center bg-slate-950 text-center text-white px-6">
+    <div class="mb-14">
+        <div class="w-32 h-32 bg-gradient-to-br from-teal-500 to-emerald-700 rounded-[48px] flex items-center justify-center text-6xl mb-8 shadow-2xl border border-teal-400/20 mx-auto transform -rotate-6">🔐</div>
+        <h3 class="font-black text-4xl mb-3 tracking-tighter uppercase">Admin Console</h3>
+        <p class="text-slate-500 text-[11px] font-bold uppercase tracking-[0.4em]">Puskesmas Sampanahan</p>
+    </div>
+    <div class="w-full max-w-[340px] space-y-8">
+        <input type="password" id="settings-pin-input" maxlength="4" oninput="handlePinInput(this)" class="w-full bg-slate-900/60 border-2 border-slate-800 p-8 rounded-[36px] text-center text-6xl font-black text-teal-400 outline-none focus:border-teal-500 transition-all tracking-[0.6em]" placeholder="••••">
+        <p id="login-status" class="text-[10px] font-bold text-slate-600 uppercase tracking-widest animate-pulse">Masukkan PIN Akses</p>
+    </div>
+</div>
+
+<!-- DASHBOARD UTAMA -->
+<div id="settings-protected-content" class="hidden min-h-screen pb-48">
+    <header class="bg-white/90 backdrop-blur-2xl p-6 pt-12 pb-10 flex justify-between items-end sticky top-0 z-[100] border-b border-slate-100">
+        <div>
+            <h2 class="text-2xl font-black uppercase tracking-tighter text-slate-950 italic leading-none">Console <span class="text-teal-600">Admin</span></h2>
+            <p class="text-[10px] font-extrabold text-slate-400 tracking-[0.25em] uppercase mt-2">Bidan Management Center</p>
+        </div>
+        <button onclick="window.location.reload()" class="bg-slate-50 p-4 rounded-2xl hover:bg-rose-50 text-xl shadow-sm transition-all active:scale-90">🚪</button>
+    </header>
+
+    <div class="max-w-6xl mx-auto p-4 md:p-10 space-y-8">
+        
+        <!-- QUICK STATS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-2">Total Bidan</p>
+                <h4 id="stat-nurses" class="text-3xl font-black text-slate-900">0</h4>
+            </div>
+            <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-2">GPS Guard</p>
+                <h4 id="stat-gps" class="text-lg font-black text-rose-600 uppercase">Off</h4>
+            </div>
+            <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-2">Kategori Shift</p>
+                <h4 id="stat-shifts" class="text-3xl font-black text-slate-900">0</h4>
+            </div>
+            <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-2">Hari Libur</p>
+                <h4 id="stat-holidays" class="text-3xl font-black text-slate-900">0</h4>
+            </div>
+        </div>
+
+        <!-- PANEL MANAJEMEN BIDAN -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-nurses')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-3xl">🤱</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Database Bidan</h4>
+                </div>
+                <span id="icon-panel-nurses" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-nurses" class="setting-panel-content">
+                <div class="px-10 pb-10 space-y-8">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="new-nurse-name" class="flex-1 p-6 bg-slate-50 border border-slate-200 rounded-[28px] outline-none font-bold text-sm uppercase focus:border-teal-500" placeholder="Nama bidan baru...">
+                        <button onclick="addNurse()" class="bg-teal-600 text-white px-10 py-6 md:py-0 rounded-[28px] font-black text-xs uppercase shadow-lg">Tambah</button>
+                    </div>
+                    <div id="nurse-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL KATEGORI SHIFT -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-shifts')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl">⚡</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Kategori Shift</h4>
+                </div>
+                <span id="icon-panel-shifts" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-shifts" class="setting-panel-content">
+                <div class="px-10 pb-10 space-y-8">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="new-shift-code" class="flex-1 p-6 bg-slate-50 border border-slate-200 rounded-[28px] outline-none font-bold text-sm uppercase focus:border-indigo-500" placeholder="Kode shift (L, CUTI, DS)...">
+                        <button onclick="addShiftCode()" class="bg-indigo-600 text-white px-10 py-6 md:py-0 rounded-[28px] font-black text-xs uppercase shadow-lg">Tambah</button>
+                    </div>
+                    <div id="shift-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL KONFIGURASI JAM SHIFT -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-time-config')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50 transition-colors">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl">🕒</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Konfigurasi Jam Shift</h4>
+                </div>
+                <span id="icon-panel-time-config" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-time-config" class="setting-panel-content">
+                <div class="px-10 pb-10 space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center">
+                            <p class="font-black text-[10px] text-teal-600 uppercase mb-4 tracking-widest">Shift Pagi (P)</p>
+                            <div class="flex flex-col gap-2">
+                                <input type="time" id="shift-p-start" class="p-3 bg-white border border-slate-200 rounded-xl font-bold text-xs">
+                                <input type="time" id="shift-p-end" class="p-3 bg-white border border-slate-200 rounded-xl font-bold text-xs">
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center">
+                            <p class="font-black text-[10px] text-amber-600 uppercase mb-4 tracking-widest">Shift Siang (S)</p>
+                            <div class="flex flex-col gap-2">
+                                <input type="time" id="shift-s-start" class="p-3 bg-white border border-slate-200 rounded-xl font-bold text-xs">
+                                <input type="time" id="shift-s-end" class="p-3 bg-white border border-slate-200 rounded-xl font-bold text-xs">
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center">
+                            <p class="font-black text-[10px] text-blue-600 uppercase mb-4 tracking-widest">Shift Malam (M)</p>
+                            <div class="flex flex-col gap-2">
+                                <input type="time" id="shift-m-start" class="p-3 bg-white border border-slate-200 rounded-xl font-bold text-xs">
+                                <input type="time" id="shift-m-end" class="p-3 bg-white border border-slate-200 rounded-xl font-bold text-xs">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL EDITOR JADWAL DINAS -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-sch')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl">🗓️</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Editor Jadwal Dinas</h4>
+                </div>
+                <span id="icon-panel-sch" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-sch" class="setting-panel-content">
+                <div class="px-6 pb-10 space-y-6">
+                    <div class="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-wrap gap-3 items-end">
+                        <div class="flex-1 min-w-[120px]">
+                            <label class="text-[9px] font-black uppercase text-slate-400 block mb-1.5 ml-2">Bulan</label>
+                            <select id="edit-sch-month" onchange="renderScheduleEditor()" class="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold text-xs outline-none focus:border-teal-500"></select>
+                        </div>
+                        <div class="flex-1 min-w-[100px]">
+                            <label class="text-[9px] font-black uppercase text-slate-400 block mb-1.5 ml-2">Tahun</label>
+                            <select id="edit-sch-year" onchange="renderScheduleEditor()" class="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold text-xs outline-none focus:border-teal-500"></select>
+                        </div>
+                        <div class="flex-[2] min-w-[200px]">
+                            <label class="text-[9px] font-black uppercase text-slate-400 block mb-1.5 ml-2">Cari Bidan</label>
+                            <input type="text" id="search-sch-nurse" oninput="renderScheduleEditor()" class="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold text-xs outline-none focus:border-teal-500" placeholder="Ketik nama...">
+                        </div>
+                    </div>
+                    <div id="editor-jadwal-container" class="rekap-wrapper"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL MANAJEMEN QR CODE -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-qr-manage')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-3xl">🔳</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Manajemen QR Code</h4>
+                </div>
+                <span id="icon-panel-qr-manage" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-qr-manage" class="setting-panel-content">
+                <div class="px-10 pb-10">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                            <div>
+                                <p class="font-black text-[10px] text-slate-400 mb-3 uppercase tracking-widest">QR Secret Key (Kata Kunci)</p>
+                                <input type="text" id="cfg-qr-data" oninput="generateQRPreview()" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-[28px] outline-none font-mono text-sm tracking-widest">
+                            </div>
+                            <div class="bg-amber-50 p-6 rounded-3xl border border-amber-100">
+                                <p class="text-[10px] font-bold text-amber-700 leading-relaxed uppercase">
+                                    💡 Petunjuk: Ganti kode ini secara berkala untuk menjaga keamanan presensi. Kode ini harus sama dengan kode di scanner Bidan.
+                                </p>
+                            </div>
+                            <button onclick="window.print()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3">
+                                🖨️ Cetak QR Untuk Meja Piket
+                            </button>
+                        </div>
+                        <div class="flex flex-col items-center justify-center bg-slate-50 rounded-[40px] p-8 border border-slate-200">
+                            <div id="qr-preview" class="p-6 bg-white rounded-3xl shadow-xl"></div>
+                            <p class="mt-6 font-mono text-[11px] font-black text-slate-800 uppercase tracking-widest" id="qr-preview-text">SISTEM-PRO</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL HARI LIBUR -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-holidays')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-3xl">🏮</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Daftar Hari Libur</h4>
+                </div>
+                <span id="icon-panel-holidays" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-holidays" class="setting-panel-content">
+                <div class="px-10 pb-10 space-y-8">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="date" id="new-holiday-date" class="p-6 bg-slate-50 border border-slate-200 rounded-[28px] outline-none font-bold text-sm">
+                        <button onclick="addHoliday()" class="bg-rose-600 text-white px-10 py-6 md:py-0 rounded-[28px] font-black text-xs uppercase shadow-lg">Tandai Libur</button>
+                    </div>
+                    <div id="holiday-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PENGATURAN GPS -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-gps')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-3xl">📍</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">GPS & Keamanan</h4>
+                </div>
+                <span id="icon-panel-gps" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-gps" class="setting-panel-content">
+                <div class="px-10 pb-10 space-y-8">
+                    <div class="flex items-center justify-between p-6 bg-slate-50 rounded-[32px] border border-slate-100">
+                        <div>
+                            <p class="font-black text-[11px] uppercase text-slate-700">Lock GPS (Wajib)</p>
+                            <p class="text-[9px] text-slate-400 mt-1 uppercase">Bidan harus di lokasi untuk absen</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="cfg-gps-lock" onchange="updateQuickStats()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <p class="font-black text-[10px] text-slate-400 mb-3 uppercase tracking-widest">Latitude</p>
+                            <input type="text" id="cfg-lat" class="w-full p-5 border border-slate-200 rounded-[24px] bg-slate-50 outline-none font-mono text-xs" placeholder="-2.xxxx">
+                        </div>
+                        <div>
+                            <p class="font-black text-[10px] text-slate-400 mb-3 uppercase tracking-widest">Longitude</p>
+                            <input type="text" id="cfg-lng" class="w-full p-5 border border-slate-200 rounded-[24px] bg-slate-50 outline-none font-mono text-xs" placeholder="116.xxxx">
+                        </div>
+                        <div>
+                            <p class="font-black text-[10px] text-slate-400 mb-3 uppercase tracking-widest">Radius (Meter)</p>
+                            <input type="number" id="cfg-radius" class="w-full p-5 border border-slate-200 rounded-[24px] bg-slate-50 font-black text-lg" placeholder="100">
+                        </div>
+                    </div>
+                    <button onclick="getCurrentLocation()" class="w-full py-5 bg-slate-900 text-white rounded-[28px] font-black text-[10px] uppercase hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl">
+                        🎯 Ambil Lokasi Puskesmas Saat Ini
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SISTEM SECURITY -->
+        <div class="bg-white rounded-[44px] shadow-sm border border-slate-100 overflow-hidden">
+            <div onclick="togglePanel('panel-system-sec')" class="p-10 flex justify-between items-center cursor-pointer hover:bg-slate-50/50">
+                <div class="flex items-center gap-6">
+                    <div class="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl text-white">⚙️</div>
+                    <h4 class="font-black text-sm uppercase text-slate-900 tracking-wider">Sistem & Keamanan</h4>
+                </div>
+                <span id="icon-panel-system-sec" class="chevron-icon text-slate-300 font-bold">▼</span>
+            </div>
+            <div id="panel-system-sec" class="setting-panel-content">
+                <div class="px-10 pb-10 space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <p class="font-black text-[10px] text-slate-400 mb-3 uppercase tracking-widest">PIN Admin (Utama)</p>
+                            <input type="text" id="cfg-admin-pin" maxlength="4" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-[28px] outline-none font-black text-2xl tracking-[0.4em]">
+                        </div>
+                        <div>
+                            <p class="font-black text-[10px] text-slate-400 mb-3 uppercase tracking-widest">PIN Koordinasi (Chat)</p>
+                            <input type="text" id="cfg-chat-pin" class="w-full p-6 bg-slate-50 border border-slate-200 rounded-[28px] outline-none font-black text-2xl tracking-[0.2em]">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-6 bg-slate-50 rounded-[32px] border border-slate-100">
+                        <div>
+                            <p class="font-black text-[11px] uppercase text-slate-700">Respon Suara AI</p>
+                            <p class="text-[9px] text-slate-400 mt-1 uppercase">FEEDBACK SUARA SAAT PRESENSI BERHASIL</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="cfg-voice">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTION PUBLISH -->
+        <div class="pt-16 pb-24 px-4">
+            <button onclick="saveFullConfigCloud()" id="btn-save-all" class="w-full bg-teal-600 text-white py-10 rounded-[44px] font-black text-sm uppercase shadow-2xl shadow-teal-300 hover:bg-teal-700 transition-all flex items-center justify-center gap-4">
+                🚀 PUBLIKASIKAN PERUBAHAN KE CLOUD
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- PRINTABLE AREA (FOR QR) -->
+<div id="printable-qr-area" class="hidden">
+    <div style="padding: 100px 50px; text-align: center; background: white;">
+        <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 5px; color: #000;">PUSKESMAS SAMPANAHAN</h1>
+        <p style="font-size: 16px; font-weight: 700; color: #444; margin-bottom: 60px; letter-spacing: 2px;">QR CODE PRESENSI DINAS BIDAN</p>
+        <div id="qr-to-print" style="display: inline-block; padding: 40px; border: 5px solid #000; border-radius: 30px;"></div>
+        <p id="qr-to-print-text" style="margin-top: 40px; font-family: monospace; font-weight: 900; font-size: 30px; color: #000; letter-spacing: 5px;"></p>
+        <p style="margin-top: 80px; font-size: 12px; font-weight: 600; color: #888;">© 2024 Sistem Informasi Manajemen Tenaga Medis</p>
+    </div>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby9H0-WEyNc50HcHMR6ErIWJ0-dB-Voyrq_vERJmQwIF0_dcjYHBr1cKHMlh-f1-SJp/exec";
+    const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    let db = { 
+        officers: [], 
+        schedule: {}, 
+        config: { 
+            adminPin: "1111", 
+            chatPin: "bidan",
+            qrData: "SISTEM-PRO-01",
+            shifts: ["P", "S", "M", "POLI"],
+            shiftHours: {
+                P: { start: "08:00", end: "14:00" },
+                S: { start: "14:00", end: "20:00" },
+                M: { start: "20:00", end: "08:00" }
+            },
+            holidays: [],
+            gpsLock: true, lat: -2.6789, lng: 116.1234, radius: 100,
+            voice: true, popup: true
+        } 
+    };
+
+    function showLoading(s, text = "Sinkronisasi...") { 
+        const loader = document.getElementById('loading');
+        document.getElementById('loading-text').innerText = text;
+        loader.classList.toggle('hidden', !s); 
+    }
+    
+    function showToast(msg, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast show`;
+        t.innerHTML = `<span>${type === 'error' ? '❌' : '✅'}</span> <span class="font-bold text-[11px] uppercase tracking-wider">${msg}</span>`;
+        container.appendChild(t);
+        setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 500); }, 4000);
+    }
+
+    function togglePanel(id) { 
+        const el = document.getElementById(id);
+        const isOpen = el.classList.contains('open');
+        document.querySelectorAll('.setting-panel-content').forEach(p => p.classList.remove('open'));
+        if(!isOpen) el.classList.add('open'); 
+    }
+
+    function handlePinInput(input) {
+        if (input.value.length === 4) verifySettingsPin();
+    }
+
+    async function verifySettingsPin() {
+        const pinInput = document.getElementById('settings-pin-input');
+        showLoading(true, "Verifikasi PIN...");
+        try {
+            const r = await fetch(`${WEB_APP_URL}?action=getData&t=${Date.now()}`);
+            const d = await r.json();
+            if(pinInput.value === (d.config?.adminPin || "1111")) {
+                db = d;
+                if (!db.config.shifts) db.config.shifts = ["P", "S", "M", "POLI"];
+                if (!db.config.shiftHours) db.config.shiftHours = { P:{start:"08:00",end:"14:00"}, S:{start:"14:00",end:"20:00"}, M:{start:"20:00",end:"08:00"} };
+
+                document.getElementById('settings-auth-container').classList.add('hidden');
+                document.getElementById('settings-protected-content').classList.remove('hidden');
+                
+                initPeriodSelectors();
+                fillInputs();
+                renderAll();
+                showToast("Akses Admin Terbuka");
+            } else {
+                pinInput.value = "";
+                showToast("PIN Salah", "error");
+            }
+        } catch(e) { showToast("Gagal mengambil data", "error"); } 
+        finally { showLoading(false); }
+    }
+
+    function initPeriodSelectors() {
+        const mS = document.getElementById('edit-sch-month');
+        const yS = document.getElementById('edit-sch-year');
+        const now = new Date();
+        MONTH_NAMES.forEach((m, i) => mS.add(new Option(m, i)));
+        mS.value = now.getMonth();
+        for(let y=now.getFullYear()-1; y<=now.getFullYear()+1; y++) yS.add(new Option(y, y));
+        yS.value = now.getFullYear();
+    }
+
+    function fillInputs() {
+        const c = db.config;
+        document.getElementById('cfg-admin-pin').value = c.adminPin || "1111";
+        document.getElementById('cfg-chat-pin').value = c.chatPin || "bidan";
+        document.getElementById('cfg-qr-data').value = c.qrData || "SISTEM-PRO-01";
+        document.getElementById('cfg-gps-lock').checked = c.gpsLock;
+        document.getElementById('cfg-lat').value = c.lat;
+        document.getElementById('cfg-lng').value = c.lng;
+        document.getElementById('cfg-radius').value = c.radius;
+        document.getElementById('cfg-voice').checked = c.voice !== false;
+
+        document.getElementById('shift-p-start').value = c.shiftHours?.P?.start || "08:00";
+        document.getElementById('shift-p-end').value = c.shiftHours?.P?.end || "14:00";
+        document.getElementById('shift-s-start').value = c.shiftHours?.S?.start || "14:00";
+        document.getElementById('shift-s-end').value = c.shiftHours?.S?.end || "20:00";
+        document.getElementById('shift-m-start').value = c.shiftHours?.M?.start || "20:00";
+        document.getElementById('shift-m-end').value = c.shiftHours?.M?.end || "08:00";
+
+        generateQRPreview();
+    }
+
+    function generateQRPreview() {
+        const data = document.getElementById('cfg-qr-data').value || "KODE-KOSONG";
+        document.getElementById('qr-preview-text').innerText = data.toUpperCase();
+        const container = document.getElementById('qr-preview');
+        container.innerHTML = "";
+        new QRCode(container, { text: data, width: 140, height: 140 });
+
+        const printCont = document.getElementById('qr-to-print');
+        printCont.innerHTML = "";
+        new QRCode(printCont, { text: data, width: 300, height: 300 });
+        document.getElementById('qr-to-print-text').innerText = data.toUpperCase();
+    }
+
+    function renderAll() {
+        renderNurses();
+        renderShifts();
+        renderHolidays();
+        renderScheduleEditor();
+        updateQuickStats();
+    }
+
+    function updateQuickStats() {
+        document.getElementById('stat-nurses').innerText = db.officers.length;
+        document.getElementById('stat-gps').innerText = document.getElementById('cfg-gps-lock').checked ? 'ON' : 'OFF';
+        document.getElementById('stat-shifts').innerText = db.config.shifts.length;
+        document.getElementById('stat-holidays').innerText = (db.config.holidays || []).length;
+    }
+
+    /* ACTIONS */
+    function addNurse() {
+        const name = document.getElementById('new-nurse-name').value.trim().toUpperCase();
+        if(!name || db.officers.includes(name)) return;
+        db.officers.push(name);
+        document.getElementById('new-nurse-name').value = '';
+        renderAll();
+    }
+
+    function deleteNurse(name) {
+        if(confirm(`Hapus ${name}?`)) {
+            db.officers = db.officers.filter(n => n !== name);
+            renderAll();
+        }
+    }
+
+    function addShiftCode() {
+        const code = document.getElementById('new-shift-code').value.trim().toUpperCase();
+        if(!code || db.config.shifts.includes(code)) return;
+        db.config.shifts.push(code);
+        document.getElementById('new-shift-code').value = '';
+        renderAll();
+    }
+
+    function deleteShift(code) {
+        if(["P","S","M"].includes(code)) return alert("Shift dasar tidak bisa dihapus.");
+        db.config.shifts = db.config.shifts.filter(s => s !== code);
+        renderAll();
+    }
+
+    function addHoliday() {
+        const date = document.getElementById('new-holiday-date').value;
+        if(!date || db.config.holidays.includes(date)) return;
+        db.config.holidays.push(date);
+        renderAll();
+    }
+
+    function deleteHoliday(date) {
+        db.config.holidays = db.config.holidays.filter(d => d !== date);
+        renderAll();
+    }
+
+    /* RENDERERS */
+    function renderNurses() {
+        document.getElementById('nurse-list-container').innerHTML = db.officers.map(n => `
+            <div class="pill-item"><span class="uppercase font-bold">${n}</span><button onclick="deleteNurse('${n}')" class="text-rose-500">✕</button></div>
+        `).join('');
+    }
+
+    function renderShifts() {
+        document.getElementById('shift-list-container').innerHTML = db.config.shifts.map(s => `
+            <div class="pill-item"><span class="uppercase font-bold">${s}</span><button onclick="deleteShift('${s}')" class="text-rose-500">✕</button></div>
+        `).join('');
+    }
+
+    function renderHolidays() {
+        document.getElementById('holiday-list-container').innerHTML = (db.config.holidays || []).sort().map(d => `
+            <div class="pill-item"><span class="font-bold text-rose-600">${d}</span><button onclick="deleteHoliday('${d}')" class="text-rose-500">✕</button></div>
+        `).join('');
+    }
+
+    function renderScheduleEditor() {
+        const container = document.getElementById('editor-jadwal-container');
+        const month = parseInt(document.getElementById('edit-sch-month').value);
+        const year = parseInt(document.getElementById('edit-sch-year').value);
+        const search = document.getElementById('search-sch-nurse').value.toLowerCase();
+        const dim = new Date(year, month + 1, 0).getDate();
+        
+        let html = `<table class="editor-table"><thead><tr><th class="sticky-col">BIDAN</th>`;
+        for(let d=1; d<=dim; d++) html += `<th>${d}</th>`;
+        html += `</tr></thead><tbody>`;
+        
+        db.officers.filter(n => n.toLowerCase().includes(search)).forEach(name => {
+            html += `<tr><td class="sticky-col uppercase font-black text-[10px]">${name}</td>`;
+            for(let d=1; d<=dim; d++) {
+                const val = (db.schedule[name] && db.schedule[name][d]) ? db.schedule[name][d] : '';
+                const cellClass = ["P","S","M"].includes(val) ? `cell-${val}` : (val ? 'cell-generic font-bold' : '');
+                html += `<td class="${cellClass}">
+                    <select onchange="updateLocalSch('${name}', ${d}, this.value, this.parentElement)" class="bg-transparent text-center font-bold w-full outline-none appearance-none cursor-pointer">
+                        <option value=""></option>
+                        ${db.config.shifts.map(sh => `<option value="${sh}" ${val===sh?'selected':''}>${sh}</option>`).join('')}
+                    </select>
+                </td>`;
+            }
+            html += `</tr>`;
+        });
+        container.innerHTML = html + `</tbody></table>`;
+    }
+
+    window.updateLocalSch = (name, day, val, cell) => {
+        if(!db.schedule[name]) db.schedule[name] = {};
+        db.schedule[name][day] = val;
+        cell.className = ["P","S","M"].includes(val) ? `cell-${val}` : (val ? 'cell-generic font-bold' : '');
+    };
+
+    async function saveFullConfigCloud() {
+        showLoading(true, "Publishing Perubahan...");
+        db.config.adminPin = document.getElementById('cfg-admin-pin').value;
+        db.config.chatPin = document.getElementById('cfg-chat-pin').value;
+        db.config.qrData = document.getElementById('cfg-qr-data').value;
+        db.config.gpsLock = document.getElementById('cfg-gps-lock').checked;
+        db.config.lat = document.getElementById('cfg-lat').value;
+        db.config.lng = document.getElementById('cfg-lng').value;
+        db.config.radius = parseInt(document.getElementById('cfg-radius').value) || 100;
+        db.config.voice = document.getElementById('cfg-voice').checked;
+
+        db.config.shiftHours = {
+            P: { start: document.getElementById('shift-p-start').value, end: document.getElementById('shift-p-end').value },
+            S: { start: document.getElementById('shift-s-start').value, end: document.getElementById('shift-s-end').value },
+            M: { start: document.getElementById('shift-m-start').value, end: document.getElementById('shift-m-end').value }
+        };
+
+        try {
+            const resp = await fetch(WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: 'updateFullConfig', payload: { config: db.config, officers: db.officers, schedule: db.schedule } })
+            });
+            const res = await resp.json();
+            if(res.status === 'success') openSuccessModal();
+        } catch(e) { showToast("Gagal simpan ke Cloud", "error"); } 
+        finally { showLoading(false); }
+    }
+
+    function openSuccessModal() { document.getElementById('modal-success').style.display = 'flex'; }
+    function closeSuccessModal() { document.getElementById('modal-success').style.display = 'none'; }
+
+    function getCurrentLocation() {
+        if (!navigator.geolocation) return showToast("GPS tidak didukung", "error");
+        showLoading(true, "Mengunci Lokasi...");
+        navigator.geolocation.getCurrentPosition((p) => {
+            document.getElementById('cfg-lat').value = p.coords.latitude.toFixed(8);
+            document.getElementById('cfg-lng').value = p.coords.longitude.toFixed(8);
+            showToast("Koordinat Diperbarui");
+            showLoading(false);
+        }, () => { showToast("Gagal ambil lokasi", "error"); showLoading(false); });
+    }
+
+    window.onload = () => document.getElementById('settings-pin-input').focus();
+</script>
+</body>
+</html>
