@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Export Libraries -->
+    <!-- Library Ekspor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     
@@ -115,7 +115,6 @@
         .cell-P { background-color: #ccfbf1 !important; color: #0d9488 !important; }
         .cell-S { background-color: #fef3c7 !important; color: #d97706 !important; }
         .cell-M { background-color: #dbeafe !important; color: #2563eb !important; }
-        .cell-POLI { background-color: #f5f3ff !important; color: #7c3aed !important; }
         .cell-generic { background-color: #f1f5f9 !important; color: #475569 !important; }
         
         .is-sunday { background-color: var(--sunday-bg) !important; color: var(--sunday-text) !important; }
@@ -124,6 +123,7 @@
         th.date-header { cursor: pointer; transition: all 0.2s; }
         th.date-header:hover { background-color: #f1f5f9; color: var(--primary); }
 
+        /* Modal Styles */
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(4px); z-index: 1000;
@@ -143,21 +143,21 @@
 
         #loader {
             position: fixed; inset: 0; background: rgba(255,255,255,0.9);
-            z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center;
         }
 
         .btn-hover:active { transform: scale(0.95); opacity: 0.8; }
         
         .capture-footer {
-            padding: 20px;
+            padding: 24px;
             border-top: 2px solid var(--excel-border);
             background: white;
         }
         
         .legend-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
             margin-top: 10px;
         }
 
@@ -170,7 +170,23 @@
 
 <div id="loader">
     <div class="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-2"></div>
-    <p class="text-[10px] font-black uppercase tracking-widest text-teal-800">Menghubungkan Server...</p>
+    <p class="text-[10px] font-black uppercase tracking-widest text-teal-800">Sinkronisasi Data...</p>
+</div>
+
+<!-- MODAL: SUKSES SIMPAN -->
+<div id="modal-success" class="modal-overlay" onclick="if(event.target === this) closeSuccessModal()">
+    <div class="modal-card !max-w-[340px]">
+        <div class="p-8 text-center">
+            <div class="w-20 h-20 success-icon-bg rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-teal-100 animate-bounce">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Data Tersimpan!</h3>
+            <p class="text-[11px] font-bold text-slate-400 uppercase leading-relaxed mb-8 tracking-widest">Jadwal berhasil disinkronkan ke Cloud Google Sheets.</p>
+            <button onclick="closeSuccessModal()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Selesai</button>
+        </div>
+    </div>
 </div>
 
 <!-- MODAL: KELOLA SHIFT -->
@@ -213,35 +229,25 @@
     </div>
 </div>
 
-<!-- MODAL: SUKSES SIMPAN -->
-<div id="modal-success" class="modal-overlay" onclick="if(event.target === this) closeSuccessModal()">
-    <div class="modal-card !max-w-[340px]">
-        <div class="p-8 text-center">
-            <div class="w-20 h-20 success-icon-bg rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-teal-100 animate-bounce">
-                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Data Tersimpan!</h3>
-            <p class="text-[11px] font-bold text-slate-400 uppercase leading-relaxed mb-8 tracking-widest">Jadwal berhasil disinkronkan ke Google Spreadsheet.</p>
-            <button onclick="closeSuccessModal()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Selesai</button>
-        </div>
-    </div>
-</div>
-
 <div class="max-w-full mx-auto">
     <!-- Header Controls -->
     <div class="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6">
         <div class="flex items-center gap-4">
-            <div class="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white text-xl shadow-xl">📝</div>
+            <div class="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white text-xl shadow-xl">📅</div>
             <div>
                 <h1 id="main-title" class="text-2xl font-black tracking-tight uppercase text-slate-800 leading-none">Editor Jadwal</h1>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">Puskesmas Sampanahan</p>
             </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-center gap-4">
-            <!-- Month Navigator -->
+        <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-64">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                <input type="text" id="search-nurse" oninput="renderTable()" placeholder="Cari Nama Bidan..." class="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold outline-none focus:border-teal-500 transition-all shadow-sm">
+            </div>
+
+            <!-- Navigasi Bulan -->
             <div class="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
                 <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg transition-all">❮</button>
                 <div id="current-period-text" class="px-6 font-black text-xs uppercase text-slate-700 flex items-center min-w-[160px] justify-center tracking-widest">---</div>
@@ -274,7 +280,7 @@
         <!-- Judul & Keterangan Atas -->
         <div class="p-6 text-center border-b-2 border-slate-100 bg-slate-50">
             <h2 id="calendar-title-top" class="text-xl font-black uppercase text-slate-800 tracking-tighter leading-tight">JADWAL DINAS BIDAN</h2>
-            <p id="calendar-period-top" class="text-[11px] font-bold text-teal-600 uppercase tracking-[0.3em] mt-1">JANUARI 2024</p>
+            <p id="calendar-period-top" class="text-[11px] font-bold text-teal-600 uppercase tracking-[0.3em] mt-1">---</p>
             <p class="text-[8px] font-bold text-slate-400 uppercase mt-2">Puskesmas Sampanahan • Kotabaru, Kalimantan Selatan</p>
         </div>
 
@@ -313,15 +319,15 @@
         <ul class="text-[10px] font-medium text-slate-500 space-y-2">
             <li class="flex items-start gap-2">
                 <span class="text-red-500 font-black">•</span>
-                <span>Klik <b>angka tanggal</b> di header tabel untuk menandai <b>Tanggal Merah</b> (Hari Besar).</span>
+                <span>Klik <b>angka tanggal</b> di header tabel untuk menandai <b>Hari Libur / Tanggal Merah</b>.</span>
             </li>
             <li class="flex items-start gap-2">
                 <span class="text-teal-500 font-black">•</span>
-                <span>Pilih shift tugas Bidan langsung pada kotak di bawah tanggal yang diinginkan.</span>
+                <span>Gunakan kotak <b>Cari Nama Bidan</b> untuk memfilter daftar secara instan.</span>
             </li>
             <li class="flex items-start gap-2">
                 <span class="text-indigo-500 font-black">•</span>
-                <span>Pastikan menekan tombol <b>Simpan</b> setelah melakukan perubahan agar data tersinkron.</span>
+                <span>Pastikan menekan <b>Simpan</b> setelah perubahan agar data terunggah ke Cloud.</span>
             </li>
         </ul>
     </div>
@@ -349,7 +355,8 @@
             state.isDirty = false;
             renderTable();
         } catch (e) {
-            alert("Gagal mengambil data.");
+            console.error(e);
+            alert("Gagal sinkron data.");
         } finally {
             document.getElementById('loader').style.display = 'none';
         }
@@ -372,7 +379,7 @@
                 fetchData();
             }
         } catch (e) {
-            alert("Gagal menyimpan data.");
+            alert("Gagal menyimpan ke server.");
         } finally {
             document.getElementById('loader').style.display = 'none';
         }
@@ -396,6 +403,7 @@
         const periodTop = document.getElementById('calendar-period-top');
         const legendBottom = document.getElementById('bottom-shift-legend');
         const timestamp = document.getElementById('print-timestamp');
+        const searchVal = document.getElementById('search-nurse').value.toLowerCase().trim();
 
         const year = state.currentDate.getFullYear();
         const month = state.currentDate.getMonth();
@@ -408,6 +416,7 @@
         const now = new Date();
         timestamp.innerText = `${now.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}, ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
 
+        // Build Legenda Bawah
         let legHtml = "";
         state.data.config.shifts.forEach(sh => {
             const colorClass = ["P", "S", "M", "POLI"].includes(sh) ? `bg-${sh === 'P' ? 'teal' : sh === 'S' ? 'amber' : sh === 'M' ? 'blue' : 'purple'}-500` : 'bg-slate-400';
@@ -415,46 +424,54 @@
         });
         legendBottom.innerHTML = legHtml;
 
+        // Build Header
         let headHtml = `<tr><th class="sticky-name">NAMA BIDAN</th>`;
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, month, d);
             const dayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             const isSunday = dateObj.getDay() === 0;
             const isHoliday = state.data.config.holidays.includes(dayStr);
-            
             const cellClass = isHoliday ? 'is-holiday' : (isSunday ? 'is-sunday' : '');
             
             headHtml += `<th class="date-header ${cellClass}" onclick="toggleHoliday('${dayStr}')">
-                <div class="text-[7px] opacity-60 mb-1">${DAYS_SHORT[dateObj.getDay()]} ${isHoliday ? '📌' : ''}</div>
+                <div class="text-[7px] opacity-60 mb-1">${DAYS_SHORT[dateObj.getDay()]} ${isHoliday ? '🏮' : ''}</div>
                 <div class="text-[13px] font-black">${d}</div>
             </th>`;
         }
         headHtml += `</tr>`;
         head.innerHTML = headHtml;
 
-        let bodyHtml = "";
-        state.data.officers.forEach(name => {
-            let rowHtml = `<tr><td class="sticky-name uppercase">${name}</td>`;
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const isSunday = new Date(year, month, d).getDay() === 0;
-                const isHoliday = state.data.config.holidays.includes(dayStr);
-                
-                let val = (state.data.schedule[name] && state.data.schedule[name][d]) ? state.data.schedule[name][d] : "";
-                let cellClass = isHoliday ? 'is-holiday' : (isSunday ? 'is-sunday' : '');
+        // Filter Officers based on search
+        const filteredOfficers = state.data.officers.filter(name => name.toLowerCase().includes(searchVal));
 
-                if (val) {
-                    const shiftTypeClass = ["P", "S", "M", "POLI"].includes(val) ? `cell-${val}` : 'cell-generic';
-                    cellClass += ' ' + shiftTypeClass;
+        // Build Body
+        let bodyHtml = "";
+        if (filteredOfficers.length === 0) {
+            bodyHtml = `<tr><td colspan="${daysInMonth + 1}" class="py-24 text-slate-300 font-black uppercase text-center tracking-widest">${searchVal ? 'Nama tidak ditemukan' : 'Database Kosong'}</td></tr>`;
+        } else {
+            filteredOfficers.forEach(name => {
+                let rowHtml = `<tr><td class="sticky-name uppercase">${name}</td>`;
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const isSunday = new Date(year, month, d).getDay() === 0;
+                    const isHoliday = state.data.config.holidays.includes(dayStr);
+                    
+                    let val = (state.data.schedule[name] && state.data.schedule[name][d]) ? state.data.schedule[name][d] : "";
+                    let cellClass = isHoliday ? 'is-holiday' : (isSunday ? 'is-sunday' : '');
+
+                    if (val) {
+                        const shiftTypeClass = ["P", "S", "M", "POLI"].includes(val) ? `cell-${val}` : 'cell-generic';
+                        cellClass += ' ' + shiftTypeClass;
+                    }
+                    
+                    let options = `<option value=""></option>`;
+                    state.data.config.shifts.forEach(s => options += `<option value="${s}" ${val === s ? 'selected' : ''}>${s}</option>`);
+                    rowHtml += `<td class="${cellClass}"><select onchange="updateShiftLocal('${name}', ${d}, this)" class="shift-select ${cellClass}">${options}</select></td>`;
                 }
-                
-                let options = `<option value=""></option>`;
-                state.data.config.shifts.forEach(s => options += `<option value="${s}" ${val === s ? 'selected' : ''}>${s}</option>`);
-                rowHtml += `<td class="${cellClass}"><select onchange="updateShiftLocal('${name}', ${d}, this)" class="shift-select ${cellClass}">${options}</select></td>`;
-            }
-            bodyHtml += rowHtml + `</tr>`;
-        });
-        body.innerHTML = bodyHtml || `<tr><td colspan="40" class="py-20 text-slate-300 font-black uppercase text-center">Data Kosong</td></tr>`;
+                bodyHtml += rowHtml + `</tr>`;
+            });
+        }
+        body.innerHTML = bodyHtml;
     }
 
     function getShiftName(code) {
@@ -469,10 +486,68 @@
         renderTable();
     }
 
+    /* --- LOGIKA EKSPOR FOTO --- */
+    async function exportToImage() {
+        const area = document.getElementById('capture-area');
+        const viewport = document.getElementById('table-viewport');
+        const loader = document.getElementById('loader');
+        const table = document.getElementById('rekap-table');
+        
+        loader.style.display = 'flex';
+        document.querySelector('#loader p').innerText = "Mempersiapkan Foto Dokumen...";
+
+        const originalViewportStyle = viewport.getAttribute('style') || '';
+        const originalAreaStyle = area.getAttribute('style') || '';
+        const stickyElements = area.querySelectorAll('.sticky-name, thead th');
+        const fullWidth = table.scrollWidth + 40; 
+        
+        area.style.width = fullWidth + 'px';
+        area.style.maxWidth = 'none';
+        viewport.style.overflow = 'visible';
+        viewport.style.maxHeight = 'none';
+        
+        stickyElements.forEach(el => el.style.position = 'static');
+
+        try {
+            window.scrollTo(0, 0);
+            const canvas = await html2canvas(area, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                width: fullWidth,
+                windowWidth: fullWidth,
+                logging: false
+            });
+            
+            const link = document.createElement('a');
+            link.download = `Jadwal_Dinas_Bidan_${MONTH_NAMES[state.currentDate.getMonth()]}_${state.currentDate.getFullYear()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (e) {
+            console.error(e);
+            alert("Gagal membuat gambar.");
+        } finally {
+            viewport.setAttribute('style', originalViewportStyle);
+            area.setAttribute('style', originalAreaStyle);
+            stickyElements.forEach(el => el.style.position = '');
+            loader.style.display = 'none';
+        }
+    }
+
+    function exportToExcel() {
+        const table = document.getElementById("rekap-table");
+        const clone = table.cloneNode(true);
+        clone.querySelectorAll('select').forEach(sel => {
+            const txt = document.createTextNode(sel.value);
+            sel.parentNode.replaceChild(txt, sel);
+        });
+        const wb = XLSX.utils.table_to_book(clone, { sheet: "Jadwal" });
+        XLSX.writeFile(wb, `Jadwal_Bidan_${MONTH_NAMES[state.currentDate.getMonth()]}.xlsx`);
+    }
+
     /* MODAL HELPERS */
     function openSuccessModal() { document.getElementById('modal-success').style.display = 'flex'; }
     function closeSuccessModal() { document.getElementById('modal-success').style.display = 'none'; }
-    function closeShiftModal() { document.getElementById('modal-shift').style.display = 'none'; }
     function openShiftModal() {
         const container = document.getElementById('shift-list-container');
         container.innerHTML = state.data.config.shifts.map((sh, i) => `
@@ -483,10 +558,11 @@
         `).join('');
         document.getElementById('modal-shift').style.display = 'flex';
     }
+    function closeShiftModal() { document.getElementById('modal-shift').style.display = 'none'; }
     function addNewShift() {
-        const v = document.getElementById('input-new-shift').value.trim().toUpperCase();
-        if (!v || state.data.config.shifts.includes(v)) return;
-        state.data.config.shifts.push(v);
+        const val = document.getElementById('input-new-shift').value.trim().toUpperCase();
+        if (!val || state.data.config.shifts.includes(val)) return;
+        state.data.config.shifts.push(val);
         document.getElementById('input-new-shift').value = "";
         state.isDirty = true; renderTable(); openShiftModal();
     }
@@ -495,6 +571,7 @@
         state.data.config.shifts.splice(i, 1);
         state.isDirty = true; renderTable(); openShiftModal();
     }
+
     function openOfficerModal() {
         const container = document.getElementById('officer-list-container');
         container.innerHTML = state.data.officers.map((name, i) => `
@@ -531,7 +608,7 @@
     }
     function deleteOfficer(i) {
         const n = state.data.officers[i];
-        if (confirm(`Hapus ${n}?`)) {
+        if (confirm(`Hapus ${n}? Jadwal terkait akan ikut terhapus.`)) {
             state.data.officers.splice(i, 1);
             delete state.data.schedule[n];
             state.isDirty = true; renderTable(); openOfficerModal();
@@ -542,48 +619,6 @@
         if (state.isDirty && !confirm("Perubahan belum disimpan. Tetap pindah?")) return;
         state.currentDate.setMonth(state.currentDate.getMonth() + offset);
         renderTable();
-    }
-
-    async function exportToImage() {
-        const area = document.getElementById('capture-area');
-        const viewport = document.getElementById('table-viewport');
-        const loader = document.getElementById('loader');
-        const table = document.getElementById('rekap-table');
-        loader.style.display = 'flex';
-        document.querySelector('#loader p').innerText = "Mempersiapkan Foto Dokumen...";
-        const originalViewportStyle = viewport.getAttribute('style') || '';
-        const originalAreaStyle = area.getAttribute('style') || '';
-        const stickyElements = area.querySelectorAll('.sticky-name, thead th');
-        const fullWidth = table.scrollWidth + 40; 
-        area.style.width = fullWidth + 'px';
-        area.style.maxWidth = 'none';
-        viewport.style.overflow = 'visible';
-        viewport.style.maxHeight = 'none';
-        stickyElements.forEach(el => el.style.position = 'static');
-        try {
-            window.scrollTo(0, 0);
-            const canvas = await html2canvas(area, { scale: 2, useCORS: true, backgroundColor: "#ffffff", width: fullWidth, windowWidth: fullWidth, logging: false });
-            const link = document.createElement('a');
-            link.download = `Jadwal_Bidan_${MONTH_NAMES[state.currentDate.getMonth()]}_${state.currentDate.getFullYear()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        } catch (e) { alert("Gagal membuat gambar."); } finally {
-            viewport.setAttribute('style', originalViewportStyle);
-            area.setAttribute('style', originalAreaStyle);
-            stickyElements.forEach(el => el.style.position = '');
-            loader.style.display = 'none';
-        }
-    }
-
-    function exportToExcel() {
-        const table = document.getElementById("rekap-table");
-        const clone = table.cloneNode(true);
-        clone.querySelectorAll('select').forEach(sel => {
-            const txt = document.createTextNode(sel.value);
-            sel.parentNode.replaceChild(txt, sel);
-        });
-        const wb = XLSX.utils.table_to_book(clone, { sheet: "Jadwal" });
-        XLSX.writeFile(wb, `Jadwal_Bidan_${MONTH_NAMES[state.currentDate.getMonth()]}.xlsx`);
     }
 
     window.onload = fetchData;
